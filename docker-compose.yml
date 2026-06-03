@@ -25,7 +25,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file: .env
     ports:
-      - "8000:8000"
+      - "8765:8000"
     volumes:
       - ./backend:/app
     depends_on:
@@ -50,12 +50,12 @@ services:
     build: ./frontend
     command: npm run dev -- --host 0.0.0.0
     ports:
-      - "5173:5173"
+      - "5174:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      VITE_API_BASE: http://localhost:8000
+      VITE_API_BASE: http://localhost:8765
     depends_on:
       - api
 
