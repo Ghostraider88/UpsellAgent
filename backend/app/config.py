@@ -30,7 +30,14 @@ class Settings(BaseSettings):
 
     # Shadow / fallback scraping sources (disabled by default)
     enable_shadow_sources: bool = False
+    # Provider that backs the shadow adapter (LinkedIn/Xing data is fetched via a
+    # licensed provider, not a self-built scraper). "proxycurl" is the default.
+    shadow_provider: str = "proxycurl"
+    proxycurl_api_key: str | None = None
     brightdata_api_key: str | None = None
+    # Hard cap on people fetched per company in shadow mode — keeps provider cost
+    # bounded and avoids indiscriminate mass-harvesting of personal data.
+    shadow_max_people: int = 25
 
     # Auth
     jwt_secret: str = "change-me-in-production"
