@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./upsell.db"
     redis_url: str = "redis://localhost:6379/0"
 
+    # Mock people source. None (default) = auto: the deterministic mock roster is
+    # used ONLY as a fallback when no real compliant source is configured, so it
+    # disappears automatically once you add real keys. Set true to force mock on
+    # (dev/demo) or false to never use it.
+    enable_mock_data: bool | None = None
+
     # LLM
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-6"

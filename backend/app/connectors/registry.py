@@ -30,7 +30,17 @@ def get_active_adapters(
         allow_shadow: per-request admin opt-in to the hidden fallback mode.
         actor: identity of the caller (for the audit log).
     """
-    adapters = [a for a in _COMPLIANT if a.is_available()]
+    available = [a for a in _COMPLIANT if a.is_available()]
+    real = [a for a in available if a.name != "mock"]
+
+    # Mock is a fallback by default: drop it as soon as a real compliant source
+    # is configured, so synthetic people never get mixed in with real data.
+    if settings.enable_mock_data is True:
+        adapters = available
+    elif settings.enable_mock_data is False:
+        adapters = real
+    else:  # auto
+        adapters = available if not real else real
 
     if allow_shadow and settings.enable_shadow_sources:
         active_shadow = [a for a in _SHADOW if a.is_available()]
