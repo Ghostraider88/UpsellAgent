@@ -33,6 +33,14 @@ def get_active_adapters(
     available = [a for a in _COMPLIANT if a.is_available()]
     real = [a for a in available if a.name != "mock"]
 
+    logger.debug(
+        "Adapter status: all=%s available=%s real=%s (mock_enabled=%s)",
+        [a.name for a in _COMPLIANT],
+        [a.name for a in available],
+        [a.name for a in real],
+        settings.enable_mock_data,
+    )
+
     # Mock is a fallback by default: drop it as soon as a real compliant source
     # is configured, so synthetic people never get mixed in with real data.
     if settings.enable_mock_data is True:
@@ -41,6 +49,8 @@ def get_active_adapters(
         adapters = real
     else:  # auto
         adapters = available if not real else real
+
+    logger.info("Active adapters for request: %s", [a.name for a in adapters])
 
     if allow_shadow and settings.enable_shadow_sources:
         active_shadow = [a for a in _SHADOW if a.is_available()]
