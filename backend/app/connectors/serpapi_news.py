@@ -6,6 +6,7 @@ employees.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 
@@ -17,7 +18,67 @@ from app.connectors.base import RawPerson, Signal
 logger = logging.getLogger(__name__)
 
 
-def _extract_names_from_text(text: str) -> list[str]:
+def _extract_names_azure_openai(text: str) -> list[str]:
+    """Extract person names using Azure OpenAI gpt-4-nano.
+
+    Falls back to regex if the API is unavailable or key is missing.
+    """
+    if not settings.azure_openai_api_key:
+        logger.debug("Azure OpenAI key not set; using regex fallback for name extraction")
+        return _extract_names_regex(text)
+
+    try:
+        headers = {
+            "api-key": settings.azure_openai_api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Extract ONLY real person names (first + last name) from text. "
+                        "Return a JSON array like [\"John Smith\", \"Jane Doe\"]. "
+                        "Return [] if no names found."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Extract person names from this text:\n{text}",
+                },
+            ],
+            "temperature": 0,
+            "max_tokens": 200,
+        }
+
+        url = (
+            f"{settings.azure_openai_endpoint}openai/deployments/"
+            f"{settings.azure_openai_deployment}/chat/completions"
+            f"?api-version={settings.azure_openai_api_version}"
+        )
+
+        resp = httpx.post(url, json=payload, headers=headers, timeout=10.0)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Extract the response text
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "[]")
+
+        # Parse JSON array from response
+        try:
+            names = json.loads(content)
+            if isinstance(names, list):
+                return [n.strip() for n in names if isinstance(n, str) and n.strip()]
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse OpenAI response as JSON: %s", content)
+
+        return []
+    except Exception as exc:
+        logger.warning("Azure OpenAI name extraction failed: %s; falling back to regex", exc)
+        return _extract_names_regex(text)
+
+
+def _extract_names_regex(text: str) -> list[str]:
     """Extract likely person names from news text using simple heuristics.
 
     Matches sequences of 2+ capitalized words (first + last name), which keeps
@@ -96,8 +157,8 @@ class SerpApiNewsAdapter:
                 filter(None, [item.get("title"), item.get("snippet")])
             )
             if text:
-                # Extract person names using heuristics from title + snippet.
-                mentioned_names = _extract_names_from_text(text)
+                # Extract person names using Azure OpenAI (falls back to regex).
+                mentioned_names = _extract_names_azure_openai(text)
 
                 signals.append(
                     Signal(

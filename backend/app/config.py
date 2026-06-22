@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-6"
 
+    # Azure OpenAI (for name extraction from news)
+    azure_openai_api_key: str | None = None
+    azure_openai_endpoint: str = "https://aoai-poc-prod.openai.azure.com/"
+    azure_openai_deployment: str = "gpt-4-nano"
+    azure_openai_api_version: str = "2024-08-01-preview"
+
     # Compliant data sources
     serpapi_api_key: str | None = None
     pdl_api_key: str | None = None
