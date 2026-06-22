@@ -6,10 +6,14 @@ employees.
 """
 from __future__ import annotations
 
+import logging
+
 import httpx
 
 from app.config import settings
 from app.connectors.base import RawPerson, Signal
+
+logger = logging.getLogger(__name__)
 
 
 class SerpApiNewsAdapter:
@@ -38,11 +42,20 @@ class SerpApiNewsAdapter:
             )
             resp.raise_for_status()
             data = resp.json()
-        except (httpx.HTTPError, ValueError):
+        except (httpx.HTTPError, ValueError) as exc:
+            logger.warning("SerpAPI failed for %r: %s", company_name, exc)
             return []
 
+        news_results = data.get("news_results", [])
+        logger.info(
+            "SerpAPI for %r: got %d news results (status=%s error=%s)",
+            company_name,
+            len(news_results),
+            data.get("search_metadata", {}).get("status"),
+            data.get("error"),
+        )
         signals: list[Signal] = []
-        for item in data.get("news_results", [])[:25]:
+        for item in news_results[:25]:
             text = " ".join(
                 filter(None, [item.get("title"), item.get("snippet")])
             )
