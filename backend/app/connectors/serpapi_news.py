@@ -7,6 +7,7 @@ employees.
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -14,6 +15,27 @@ from app.config import settings
 from app.connectors.base import RawPerson, Signal
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_names_from_text(text: str) -> list[str]:
+    """Extract likely person names from news text using simple heuristics.
+
+    Matches capitalized word sequences that are not common company/role keywords.
+    Returns a list of unique names (e.g., "John Smith", "Anna Mueller").
+    """
+    if not text or len(text) < 10:
+        return []
+
+    # Match sequences of capitalized words (names). Exclude common non-names.
+    pattern = r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)*)\b"
+    candidates = re.findall(pattern, text)
+
+    # Filter out common non-name words (titles, company names, etc).
+    exclude = {"CEO", "CFO", "COO", "VP", "Head", "Manager", "Director", "Lead"}
+    names = [c for c in candidates if c not in exclude and len(c) > 2]
+
+    # Deduplicate and return.
+    return list(dict.fromkeys(names))[:10]  # Top 10 to avoid noise
 
 
 class SerpApiNewsAdapter:
@@ -60,5 +82,15 @@ class SerpApiNewsAdapter:
                 filter(None, [item.get("title"), item.get("snippet")])
             )
             if text:
-                signals.append(Signal(text=text, url=item.get("link"), raw=item))
+                # Extract person names using heuristics from title + snippet.
+                mentioned_names = _extract_names_from_text(text)
+
+                signals.append(
+                    Signal(
+                        text=text,
+                        url=item.get("link"),
+                        mentioned_names=mentioned_names,
+                        raw=item,
+                    )
+                )
         return signals
