@@ -55,7 +55,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      VITE_API_BASE: http://localhost:8765
+      # The browser (not the container) resolves this URL, so for remote access
+      # it must be the Docker host's IP/hostname — NOT localhost. Set PUBLIC_HOST
+      # in .env to your server's IP, e.g. PUBLIC_HOST=192.168.1.50
+      VITE_API_BASE: http://${PUBLIC_HOST:-localhost}:8765
     depends_on:
       - api
 

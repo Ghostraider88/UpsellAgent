@@ -5,6 +5,8 @@ executes it. For local/dev/test the API can also run the pipeline inline.
 """
 from __future__ import annotations
 
+from arq.connections import RedisSettings
+
 from app.config import settings
 from app.pipeline.enrich import enrich_company
 
@@ -17,4 +19,5 @@ async def run_enrichment_job(ctx, **kwargs):
 
 class WorkerSettings:
     functions = [run_enrichment_job]
-    redis_settings = settings.redis_url
+    # arq needs a RedisSettings object, not a bare DSN string.
+    redis_settings = RedisSettings.from_dsn(settings.redis_url)
