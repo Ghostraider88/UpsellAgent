@@ -20,22 +20,36 @@ logger = logging.getLogger(__name__)
 def _extract_names_from_text(text: str) -> list[str]:
     """Extract likely person names from news text using simple heuristics.
 
-    Matches capitalized word sequences that are not common company/role keywords.
-    Returns a list of unique names (e.g., "John Smith", "Anna Mueller").
+    Matches sequences of 2+ capitalized words (first + last name), which keeps
+    real people like "David Wystrach" while filtering single-word noise such as
+    company names ("Dachser") and generic title words.
     """
     if not text or len(text) < 10:
         return []
 
-    # Match sequences of capitalized words (names). Exclude common non-names.
-    pattern = r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)*)\b"
+    # Require at least two capitalized words in a row → a first + last name.
+    pattern = r"\b([A-Z][a-z]+(?: [A-Z][a-z]+)+)\b"
     candidates = re.findall(pattern, text)
 
-    # Filter out common non-name words (titles, company names, etc).
-    exclude = {"CEO", "CFO", "COO", "VP", "Head", "Manager", "Director", "Lead"}
-    names = [c for c in candidates if c not in exclude and len(c) > 2]
+    # Drop multi-word phrases that are clearly not people (org/role phrases).
+    stop = {
+        "Air", "Sea", "Food", "Logistics", "Supply", "Chain", "Fuel", "Cells",
+        "Truck", "Trucks", "Mercedes", "Benz", "Daimler", "Container", "News",
+        "Press", "Release", "Market", "Insight", "Transport", "Intelligence",
+        "Northern", "Ireland", "South", "East", "Asia", "New", "York",
+        "Takes", "Delivery", "Next", "Generation", "Hydrogen", "Electric",
+        "Building", "Opens", "Expands", "Grows", "Service", "Services",
+        "Group", "Company", "Network", "Global", "Europe", "Germany", "Spain",
+    }
+    names = []
+    for c in candidates:
+        words = c.split()
+        # Keep only if no word is an obvious org/place token.
+        if not any(w in stop for w in words):
+            names.append(c)
 
-    # Deduplicate and return.
-    return list(dict.fromkeys(names))[:10]  # Top 10 to avoid noise
+    # Deduplicate, cap to limit noise.
+    return list(dict.fromkeys(names))[:10]
 
 
 class SerpApiNewsAdapter:

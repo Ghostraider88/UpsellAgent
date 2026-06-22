@@ -80,7 +80,18 @@ def enrich_company(
                 raw_people.append(rp)
                 source_of.setdefault(rp.full_name.lower(), adapter.name)
                 source_mode.setdefault(rp.full_name.lower(), adapter.mode)
-            signals.extend(adapter.find_signals(company_name))
+            for sig in adapter.find_signals(company_name):
+                signals.append(sig)
+                # Promote people mentioned in signals (e.g. news) into the roster
+                # so they appear in the graph, not just as relationship endpoints.
+                for name in sig.mentioned_names:
+                    key = name.strip().lower()
+                    if not key:
+                        continue
+                    if key not in source_of:
+                        raw_people.append(RawPerson(full_name=name.strip()))
+                        source_of[key] = adapter.name
+                        source_mode[key] = adapter.mode
         if job:
             job.progress = 35
             session.commit()
